@@ -1,15 +1,20 @@
 import streamlit as st
+import unicodedata
 from src.db_connection import connect_to_db
 from src.product_operations import get_product_price, get_product_names
 from src.calculation import calculate_medical_points
 
 # Streamlitアプリケーションのヘッダー
-st.title("選定療養点数計算")
+st.title("診療報酬点数計算")
 
-# データベースから候補を取得してリストとして表示
+# データベースから全薬品名を取得
 conn = connect_to_db('product_database.db')
 product_names = get_product_names(conn, "")
 conn.close()
+
+# ユーザー入力を標準化する関数
+def normalize_input(input_str):
+    return unicodedata.normalize('NFKC', input_str).lower()
 
 # 7つの薬を選択する領域と、それぞれに対応する1日量の入力フィールドを追加
 medications = []
@@ -19,6 +24,7 @@ for i in range(7):
     col1, col2 = st.columns(2)
     
     with col1:
+        # 薬の名前を入力してもらい、動的に選択肢を更新する
         medication = st.selectbox(f"薬 {i+1} を選択してください:", [""] + product_names, key=f"medication_{i}")
     
     with col2:
@@ -60,12 +66,17 @@ if st.button("計算"):
                 conn.close()
 
                 if price is not None:
-                    # 1日量と合計日数に基づいて総点数を計算し、カスタムの丸め処理を適用
+                    # 価格を点数に変換
                     points_per_unit = calculate_medical_points(price)
-                    raw_value = points_per_unit * dosage * total_days
-                    medication_points = custom_rounding(raw_value)
-                    st.success(f"{medication} の総診療報酬点数: {medication_points} 点")
-                    total_points += medication_points
+                    
+                    # 1日量に基づく計算結果を丸める
+                    daily_points = custom_rounding(points_per_unit * dosage)
+                    
+                    # その後で合計日数を掛け合わせる
+                    total_medication_points = daily_points * total_days
+                    
+                    st.success(f"{medication} の総診療報酬点数: {total_medication_points} 点")
+                    total_points += total_medication_points
                 else:
                     st.error(f"{medication} が見つかりませんでした。")
                     all_fields_valid = False
