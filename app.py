@@ -67,7 +67,7 @@ if st.button("計算"):
 
                 if price is not None:
                     # 価格を点数に変換
-                    points_per_unit = price
+                   calculate_medical_points(price)
                     
                     # 1日量に基づく計算結果を丸める
                     daily_points = custom_rounding(points_per_unit * dosage)
